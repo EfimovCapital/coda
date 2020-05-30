@@ -19,16 +19,16 @@ updated version of the Coda software.
 When it becomes evident that the network is failing, the Coda
 developers will perform the following tasks:
 
-  - on some node, run a CLI command to persist enough state to re-start the
-     network
+ - on some node, run a CLI command to persist enough state to re-start the
+    network
 
-  - run a tool to transform the persisted state into startup data for the
-     Coda binary
+ - run a tool to transform the persisted state into startup data for the
+    Coda binary
 
-  - create a new Coda binary with a new major protocol version
+ - create a new Coda binary with a new major protocol version
 
-  - notify node operators of the change, and provide access to the new
-     binary and startup data
+ - notify node operators of the change, and provide access to the new
+    binary and startup data
 
 Other than the new protocol version and new startup data, the software
 should not require any other changes. The new startup data results in
@@ -45,11 +45,80 @@ Coda developers.
 
 The CLI command can be in the `internal` group of commands, since
 it meant for use in extraordinary circumstances. A suggested
-name is `save-hard-fork-data`.
+name is `save-hard-fork-data`. That command communicates with the
+running node daemon via the daemon-RPC mechanism used in other
+client commands.
+
+Let `frontier` be the current transition frontier. When the daemon
+receives the command, it saves the following data:
+
+ - its root
+
+   this is an instance of `Protocol_state.value`, retrievable via
+
+	 ```ocaml
+      let full = Transition_frontier.full_frontier frontier in
+      let root = full.root in
+	  root |> find_protocol_state
+     ```
+
+ - the SNARK (proof) for that root
+
+   this is an instance of `Proof.t`, retrievable via
+
+   ```ocaml
+      let full = Transition_frontier.full_frontier frontier in
+      let root = full.root in
+      let (transition_with_hash,_) = root.validated_transition in
+	  let transition = transition_with_hash.With_hash.data in
+	  transition.protocol_state_proof
+   ```
+
+ - the SNARKed ledger corresponding to the root
+
+   this is an instance of `Coda_base.Ledger.Any_ledger.witness`, retrievable
+    via
+
+   ```ocaml
+    let full = Transition_frontier.full_frontier frontier in
+    full.root_ledger
+   ```
+   Note: There appears to be a mechanism in `Persistent_root` for saving the
+   root ledger, but it doesn't appear to store the ledger entries.
+
+ - a root history of some (unresolved) multiple of the consensus parameter `k`,
+    retrievable via a transition frontier extension:
+	```ocaml
+     let root_history =
+       get_extension (Transition_frontier.extensions frontier) Root_history
+     in
+     List.map (Root_history.to_list root_history) ~f:(fun {transition;_} -> transition)
+      |> List.take multiple_of_k
+
+    ```
+
+ - two epoch ledgers
+
+   there is pending PR #4115 which allows saving epoch ledgers to RocksDB databases
+
+   which two epoch ledgers needed depends on whether the root is in the current epoch,
+     or the previous one:
+	 - if the root is in the current epoch, the two ledgers needed are
+	    `staking_epoch_snapshot` and `next_epoch_snapshot`, as in the PR
+     - if the root is in the previous epoch, the two ledger needed are
+        `staking_epoch_snapshot` and `previous_epoch_snapshot` (not implemented
+	    in the PR)
+
+The in-memory values (that is, those other than the epoch ledgers) can be serialized
+as JSON or S-expressions to some particular location, say `recovery_data` in
+the Coda configuration directory. The epoch ledgers can be copied to that location,
+or their contents re-serialized to match the format of other data.
+
+Before saving any data, the networking layer should be disabled, so that all data
+refers to the same state of the blockchain.
 
 
-
-
+======================================================================================
 
 
 This is the technical portion of the RFC. Explain the design in sufficient detail that:
@@ -61,8 +130,9 @@ This is the technical portion of the RFC. Explain the design in sufficient detai
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-In the best case, the network will run smoothly, making preparations for a hard fork gratuitious,
-and the software unnecessarily complex. That said, the cost of forgoing those preparations is high.
+In the best case, the network will run smoothly, making preparations
+for a hard fork gratuitious, and the software unnecessarily
+complex. That said, the cost of forgoing those preparations is high.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
