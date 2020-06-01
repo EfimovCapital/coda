@@ -35,8 +35,8 @@ should not require any other changes. The new startup data results in
 a new chain id, so the new software will require all node operators to
 upgrade.
 
-CLI command
------------
+CLI command to save state
+-------------------------
 
 The Coda developers will choose a node with a root to represent the
 starting point of the hard fork. That choice is beyond the scope of
@@ -84,18 +84,9 @@ receives the command, it saves the following data:
     full.root_ledger
    ```
    Note: There appears to be a mechanism in `Persistent_root` for saving the
-   root ledger, but it doesn't appear to store the ledger entries.
+   root ledger, but it appears only to store a hash, and not the ledger entries.
 
- - a root history of some (unresolved) multiple of the consensus parameter `k`,
-    retrievable via a transition frontier extension:
-	```ocaml
-     let root_history =
-       get_extension (Transition_frontier.extensions frontier) Root_history
-     in
-     List.map (Root_history.to_list root_history) ~f:(fun {transition;_} -> transition)
-      |> List.take multiple_of_k
-
-    ```
+ - the global slot number of the block containing the root
 
  - two epoch ledgers
 
@@ -109,13 +100,34 @@ receives the command, it saves the following data:
         `staking_epoch_snapshot` and `previous_epoch_snapshot` (not implemented
 	    in the PR)
 
+Nodes running the upgraded software will have a new versions of
+
+ - genesis ledger
+ - genesis proof
+ - genesis timestamp
+
+and so will start with an empty root history. In earlier discussions of hard forks,
+it was suggested that saving some length of root history might be needed. See
+issue #4859. Because all nodes will be starting from a new genesis state,
+they won't need to see any blocks that led to that state; hence the root history
+won't need to be persisted.
+
 The in-memory values (that is, those other than the epoch ledgers) can be serialized
 as JSON or S-expressions to some particular location, say `recovery_data` in
-the Coda configuration directory. The epoch ledgers can be copied to that location,
-or their contents re-serialized to match the format of other data.
+the Coda configuration directory. The epoch ledgers can be copied to that same location.
 
 Before saving any data, the networking layer should be disabled, so that all data
-refers to the same state of the blockchain.
+necessarily refers to the same state of the blockchain.
+
+Transforming saved state to startup data
+----------------------------------------
+
+- use epoch ledgers in the same way we'd use persisted epoch ledgers
+- snarked ledger becomes new genesis ledger
+   pass that ledger, and the protocol state to a variation on `Genesis_ledger_helper.Genesis_proof.generate_inputs`
+    we have the `Protocol_state.value` already, don't need to calculate it
+
+
 
 
 ======================================================================================
