@@ -7,6 +7,7 @@ let Map = Prelude.Map
 let Decorate = ../Lib/Decorate.dhall
 
 let Docker = ./Docker/Type.dhall
+let Summon = ./Summon/Type.dhall
 let Base = ./Base.dhall
 
 let Size = ./Size.dhall
@@ -30,7 +31,8 @@ let build : Config.Type -> Base.Type = \(c : Config.Type) ->
       label = c.label,
       key = c.key,
       target = Size.Large,
-      docker = Docker::{ image = (../Constants/ContainerImages.dhall).codaToolchain }
+      docker = Docker::{ image = (../Constants/ContainerImages.dhall).codaToolchain },
+      summon = Summon::{=}
     }
 
 in {Config = Config, build = build, Type = Base.Type}

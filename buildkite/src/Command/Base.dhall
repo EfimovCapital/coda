@@ -7,10 +7,12 @@ let B/Plugins/Partial = B.definitions/commandStep/properties/plugins/Type
 let Map = Prelude.Map
 
 let Docker = ./Docker/Type.dhall
+let Summon = ./Summon/Type.dhall
 
 let Size = ./Size.dhall
 
 -- We assume we're only using the Docker plugin for now
+-- TODO: enable variable plugin loading
 let B/Command = B.definitions/commandStep/Type Text Text Docker.Type Docker.Type
 let B/Plugins = B/Plugins/Partial Docker.Type Docker.Type
 
@@ -42,6 +44,7 @@ let Config =
       , key : Text
       , target : Size
       , docker : Docker.Type
+      , summon : Summon.Type
       }
   , default = {
       depends_on = [] : List Text
@@ -67,7 +70,7 @@ let build : Config.Type -> B/Command.Type = \(c : Config.Type) ->
     key = Some c.key,
     label = Some c.label,
     plugins =
-      Some (B/Plugins.Plugins/Type (toMap { `docker#v3.5.0` = c.docker }))
+      Some (B/Plugins.Plugins/Type (toMap { `docker#v3.5.0` = c.docker, `angaza/summon#v0.1.0` = c.summon }))
   }
 
 in {Config = Config, build = build, Type = B/Command.Type}
