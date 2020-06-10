@@ -106,15 +106,17 @@ Nodes running the upgraded software will have a new versions of
  - genesis proof
  - genesis timestamp
 
-and so will start with an empty root history. In earlier discussions of hard forks,
-it was suggested that saving some length of root history might be needed. See
-issue #4859. Because all nodes will be starting from a new genesis state,
-they won't need to see any blocks that led to that state; hence the root history
-won't need to be persisted.
+and so will start with an empty root history. In earlier discussions
+of hard forks, it was suggested that saving some length of root
+history might be needed. See issue #4859. Because all nodes will be
+starting from a new genesis state, they won't need to see any blocks
+that led to that state; hence the root history won't need to be
+persisted.
 
-The in-memory values (that is, those other than the epoch ledgers) can be serialized
-as JSON or S-expressions to some particular location, say `recovery_data` in
-the Coda configuration directory. The epoch ledgers can be copied to that same location.
+The in-memory values (that is, those other than the epoch ledgers) can
+be serialized as JSON or S-expressions to some particular location,
+say `recovery_data` in the Coda configuration directory. The epoch
+ledgers can be copied to that same location.
 
 Before saving any data, the networking layer should be disabled, so that all data
 necessarily refers to the same state of the blockchain.
@@ -126,7 +128,6 @@ Transforming saved state to startup data
 - snarked ledger becomes new genesis ledger
    pass that ledger, and the protocol state to a variation on `Genesis_ledger_helper.Genesis_proof.generate_inputs`
     we have the `Protocol_state.value` already, don't need to calculate it
-
 
 
 
